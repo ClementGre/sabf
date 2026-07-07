@@ -77,10 +77,11 @@ private key — no owner interaction needed post-share.
 **Revocation**: owner's client generates a *new* DEK, downloads and decrypts all
 `apps_data` rows and every remaining grantee's metadata under the old DEK,
 re-encrypts everything under the new DEK, creates a new `apps` row with new
-`user_apps` memberships (sealed to the new DEK) for every user who should keep
-access — excluding the revoked user — then deletes the old app. The `app_id`
-changes on every revocation; frontends must treat app identity as unstable across
-a revoke event and update any local references.
+`user_apps` memberships (same `slug`, sealed to the new DEK) for every user who
+should keep access — excluding the revoked user — then deletes the old app. The
+`app_id` changes on every revocation, but `slug` carries over, so a frontend doing
+`GET /apps?slug=notes` keeps working transparently without needing to track the
+old `app_id`.
 
 ## 4. Database schema
 
@@ -106,18 +107,26 @@ CREATE TABLE sessions (
     revoked_at          TIMESTAMPTZ
 );
 
+-- The app itself: identity + content shared by everyone with access.
+-- Both slug and encrypted_metadata are encrypted/keyed with the app's DEK-level
+-- concerns (slug is plaintext by design, metadata is Enc(DEK, ...)) but neither
+-- is per-user: anyone holding the DEK decrypts the same metadata. No owner_id:
+-- ownership is expressed as the user_apps row with role='owner'.
 CREATE TABLE apps (
-    id          UUID PRIMARY KEY,                        -- UUIDv7
-    owner_id    UUID NOT NULL REFERENCES users(id),
-    created_at  TIMESTAMPTZ NOT NULL DEFAULT now()
+    id                  UUID PRIMARY KEY,                 -- UUIDv7
+    slug                TEXT NOT NULL,                    -- plaintext, developer-defined app-type
+                                                            -- identifier (e.g. "notes"), NOT a
+                                                            -- user-editable display name
+    encrypted_metadata  BYTEA NOT NULL,                   -- Enc(DEK, {name, settings, ...}), single
+                                                            -- shared value, editable by any active member
+    created_at          TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
--- This table IS "user's apps": membership + access + per-user metadata
+-- This table IS "user's apps": membership + access only (identity/content lives in `apps`)
 CREATE TABLE user_apps (
     app_id              UUID NOT NULL REFERENCES apps(id) ON DELETE CASCADE,
     user_id             UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
     wrapped_dek         BYTEA NOT NULL,                   -- sealed_box(user's pubkey, DEK)
-    encrypted_metadata  BYTEA NOT NULL,                   -- Enc(DEK, {name, settings, ...}), per-user copy
     role                TEXT NOT NULL CHECK (role IN ('owner','shared')),
     status              TEXT NOT NULL CHECK (status IN ('pending','active')) DEFAULT 'active',
     granted_by          UUID REFERENCES users(id),        -- null for the owner's own row
@@ -125,6 +134,8 @@ CREATE TABLE user_apps (
     created_at          TIMESTAMPTZ NOT NULL DEFAULT now(),
     PRIMARY KEY (app_id, user_id)
 );
+-- Exactly one owner per app
+CREATE UNIQUE INDEX idx_user_apps_one_owner ON user_apps(app_id) WHERE role = 'owner';
 
 CREATE TABLE apps_data (
     id              UUID PRIMARY KEY,                    -- UUIDv7, time-ordered
@@ -163,11 +174,16 @@ Users
                                       -- whether the username is registered.
 
 Apps
-  GET    /apps                       -> [{ app_id, role, status, encrypted_metadata,
+  GET    /apps                       -> [{ app_id, slug, encrypted_metadata, role, status,
                                             wrapped_dek, last_access_at }]
-  POST   /apps                       { encrypted_metadata, wrapped_dek } -> app + owner row
-  GET    /apps/:id                   -> { encrypted_metadata, wrapped_dek, role, status }
-  PATCH  /apps/:id                   { encrypted_metadata }  -- caller's own membership row only
+                                      -- joins apps + the caller's user_apps row
+  GET    /apps?slug=notes            -- direct fetch by slug (scoped to the caller's own
+                                      -- active apps), skips listing+client-side search
+  POST   /apps                       { slug, encrypted_metadata, wrapped_dek } -> app + owner row
+  GET    /apps/:id                   -> { slug, encrypted_metadata, wrapped_dek, role, status }
+  PATCH  /apps/:id                   { encrypted_metadata }  -- any active member (owner or shared);
+                                      -- last-write-wins, no conflict resolution (slug is
+                                      -- set at creation and immutable)
   DELETE /apps/:id                   -- owner only, cascades to user_apps + apps_data
 
 App data
@@ -205,3 +221,11 @@ Sharing
 - `user_id` is now returned by an unauthenticated endpoint (`GET /users/:username`).
   UUIDv7 ids are already unguessable, so this doesn't materially aid enumeration,
   but worth confirming that's an acceptable exposure for a self-hosted deployment.
+- Since `slug` now lives on `apps` (not `user_apps`), "one active app per slug per
+  user" can no longer be a single-table partial unique index — it spans a join.
+  Needs either an application-level check-then-insert, or a trigger, to stay
+  race-free under concurrent app creation.
+- `encrypted_metadata` is now shared and any active member can PATCH it with no
+  conflict resolution (last write wins) — fine for casual use, but a concurrent-edit
+  story (versioning/ETag on PATCH) may be worth adding if apps end up being
+  actively co-edited rather than mostly read.
