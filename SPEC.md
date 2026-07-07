@@ -15,7 +15,7 @@ storage without trusting the server with plaintext.
   communicate this clearly to end users.
 - **One wrapping mechanism, not two**: every app's DEK is sealed individually to
   each user who has access (owner included) via that user's own X25519 public
-  key. Ownership and sharing are the same mechanism — a row in `user_apps` with a
+  key. Ownership and sharing are the same mechanism — a row in `apps_access` with a
   sealed copy of the DEK. There is no separate "owner wraps with UMK" path.
 - **Client does all crypto.** The server is ciphertext-blind and orchestration-only.
   Key derivation, encryption, decryption, and re-encryption (e.g. on revoke) all
@@ -58,11 +58,11 @@ Per app:
 ```
 DEK (random 32B, generated client-side at app creation)
    │
-   ├─► sealed_box(owner_pubkey, DEK)    → user_apps row, role='owner'
-   ├─► sealed_box(granteeA_pubkey, DEK) → user_apps row, role='shared'
-   └─► sealed_box(granteeB_pubkey, DEK) → user_apps row, role='shared'
+   ├─► sealed_box(owner_pubkey, DEK)    → apps_access row, granted_by=NULL     (owner)
+   ├─► sealed_box(granteeA_pubkey, DEK) → apps_access row, granted_by=<owner>  (shared)
+   └─► sealed_box(granteeB_pubkey, DEK) → apps_access row, granted_by=<owner>  (shared)
 
-DEK encrypts: app metadata (per-user copy) + every apps_data.encrypted_json
+DEK encrypts: apps.encrypted_metadata (single shared value) + every apps_data.encrypted_json
 ```
 
 **Passphrase change**: only `wrapped_umk` (and the auth_hash/salt) need updating.
@@ -77,7 +77,7 @@ private key — no owner interaction needed post-share.
 **Revocation**: owner's client generates a *new* DEK, downloads and decrypts all
 `apps_data` rows and every remaining grantee's metadata under the old DEK,
 re-encrypts everything under the new DEK, creates a new `apps` row with new
-`user_apps` memberships (same `slug`, sealed to the new DEK) for every user who
+`apps_access` memberships (same `slug`, sealed to the new DEK) for every user who
 should keep access — excluding the revoked user — then deletes the old app. The
 `app_id` changes on every revocation, but `slug` carries over, so a frontend doing
 `GET /apps?slug=notes` keeps working transparently without needing to track the
@@ -111,7 +111,7 @@ CREATE TABLE sessions (
 -- Both slug and encrypted_metadata are encrypted/keyed with the app's DEK-level
 -- concerns (slug is plaintext by design, metadata is Enc(DEK, ...)) but neither
 -- is per-user: anyone holding the DEK decrypts the same metadata. No owner_id:
--- ownership is expressed as the user_apps row with role='owner'.
+-- ownership is expressed as the apps_access row with granted_by IS NULL.
 CREATE TABLE apps (
     id                  UUID PRIMARY KEY,                 -- UUIDv7
     slug                TEXT NOT NULL,                    -- plaintext, developer-defined app-type
@@ -122,20 +122,19 @@ CREATE TABLE apps (
     created_at          TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
--- This table IS "user's apps": membership + access only (identity/content lives in `apps`)
-CREATE TABLE user_apps (
+-- Membership + access only (identity/content lives in `apps`)
+CREATE TABLE apps_access (
     app_id              UUID NOT NULL REFERENCES apps(id) ON DELETE CASCADE,
     user_id             UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
     wrapped_dek         BYTEA NOT NULL,                   -- sealed_box(user's pubkey, DEK)
-    role                TEXT NOT NULL CHECK (role IN ('owner','shared')),
     status              TEXT NOT NULL CHECK (status IN ('pending','active')) DEFAULT 'active',
-    granted_by          UUID REFERENCES users(id),        -- null for the owner's own row
+    granted_by          UUID REFERENCES users(id),        -- NULL = owner's own row;
     last_access_at      TIMESTAMPTZ,
     created_at          TIMESTAMPTZ NOT NULL DEFAULT now(),
     PRIMARY KEY (app_id, user_id)
 );
--- Exactly one owner per app
-CREATE UNIQUE INDEX idx_user_apps_one_owner ON user_apps(app_id) WHERE role = 'owner';
+-- Exactly one owner (granted_by IS NULL) per app
+CREATE UNIQUE INDEX idx_apps_access_one_owner ON apps_access(app_id) WHERE granted_by IS NULL;
 
 CREATE TABLE apps_data (
     id              UUID PRIMARY KEY,                    -- UUIDv7, time-ordered
@@ -174,17 +173,18 @@ Users
                                       -- whether the username is registered.
 
 Apps
-  GET    /apps                       -> [{ app_id, slug, encrypted_metadata, role, status,
+  GET    /apps                       -> [{ app_id, slug, encrypted_metadata, granted_by, status,
                                             wrapped_dek, last_access_at }]
-                                      -- joins apps + the caller's user_apps row
+                                      -- granted_by=null means the caller owns this app
+                                      -- joins apps + the caller's apps_access row
   GET    /apps?slug=notes            -- direct fetch by slug (scoped to the caller's own
                                       -- active apps), skips listing+client-side search
   POST   /apps                       { slug, encrypted_metadata, wrapped_dek } -> app + owner row
-  GET    /apps/:id                   -> { slug, encrypted_metadata, wrapped_dek, role, status }
+  GET    /apps/:id                   -> { slug, encrypted_metadata, wrapped_dek, granted_by, status }
   PATCH  /apps/:id                   { encrypted_metadata }  -- any active member (owner or shared);
                                       -- last-write-wins, no conflict resolution (slug is
                                       -- set at creation and immutable)
-  DELETE /apps/:id                   -- owner only, cascades to user_apps + apps_data
+  DELETE /apps/:id                   -- owner only, cascades to apps_access + apps_data
 
 App data
   POST   /apps/:id/data              { type, encrypted_json } -> row
@@ -221,7 +221,7 @@ Sharing
 - `user_id` is now returned by an unauthenticated endpoint (`GET /users/:username`).
   UUIDv7 ids are already unguessable, so this doesn't materially aid enumeration,
   but worth confirming that's an acceptable exposure for a self-hosted deployment.
-- Since `slug` now lives on `apps` (not `user_apps`), "one active app per slug per
+- Since `slug` now lives on `apps` (not `apps_access`), "one active app per slug per
   user" can no longer be a single-table partial unique index — it spans a join.
   Needs either an application-level check-then-insert, or a trigger, to stay
   race-free under concurrent app creation.
