@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        UPDATE apps_access SET last_edit_at = now()\n        WHERE app_id = $1 AND user_id = $2\n        ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Uuid"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "82b438d363bbc8d8edc8ed6bb62d23c6c2078c559dadbdabfc0e98ae610b5926"
+}

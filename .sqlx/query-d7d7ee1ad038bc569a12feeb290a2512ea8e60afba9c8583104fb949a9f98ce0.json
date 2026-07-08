@@ -1,0 +1,16 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE apps_data SET encrypted_json = $3 WHERE app_id = $1 AND id = $2",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Uuid",
+        "Bytea"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "d7d7ee1ad038bc569a12feeb290a2512ea8e60afba9c8583104fb949a9f98ce0"
+}

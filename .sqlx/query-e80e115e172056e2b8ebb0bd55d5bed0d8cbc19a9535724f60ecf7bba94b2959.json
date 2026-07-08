@@ -1,0 +1,136 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        SELECT id, username, auth_hash, auth_salt, kdf_salt, kdf_params,\n               wrapped_umk, public_key, wrapped_privkey, created_at\n        FROM users WHERE id = $1\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "users",
+            "name": "id"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "username",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "users",
+            "name": "username"
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "auth_hash",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "users",
+            "name": "auth_hash"
+          }
+        }
+      },
+      {
+        "ordinal": 3,
+        "name": "auth_salt",
+        "type_info": "Bytea",
+        "origin": {
+          "Table": {
+            "table": "users",
+            "name": "auth_salt"
+          }
+        }
+      },
+      {
+        "ordinal": 4,
+        "name": "kdf_salt",
+        "type_info": "Bytea",
+        "origin": {
+          "Table": {
+            "table": "users",
+            "name": "kdf_salt"
+          }
+        }
+      },
+      {
+        "ordinal": 5,
+        "name": "kdf_params",
+        "type_info": "Jsonb",
+        "origin": {
+          "Table": {
+            "table": "users",
+            "name": "kdf_params"
+          }
+        }
+      },
+      {
+        "ordinal": 6,
+        "name": "wrapped_umk",
+        "type_info": "Bytea",
+        "origin": {
+          "Table": {
+            "table": "users",
+            "name": "wrapped_umk"
+          }
+        }
+      },
+      {
+        "ordinal": 7,
+        "name": "public_key",
+        "type_info": "Bytea",
+        "origin": {
+          "Table": {
+            "table": "users",
+            "name": "public_key"
+          }
+        }
+      },
+      {
+        "ordinal": 8,
+        "name": "wrapped_privkey",
+        "type_info": "Bytea",
+        "origin": {
+          "Table": {
+            "table": "users",
+            "name": "wrapped_privkey"
+          }
+        }
+      },
+      {
+        "ordinal": 9,
+        "name": "created_at",
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "users",
+            "name": "created_at"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "e80e115e172056e2b8ebb0bd55d5bed0d8cbc19a9535724f60ecf7bba94b2959"
+}

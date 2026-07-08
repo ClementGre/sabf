@@ -1,0 +1,96 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        SELECT id, app_id, type, encrypted_json, created_at, edited_at\n        FROM apps_data\n        WHERE app_id = $1\n          AND ($2::text IS NULL OR type = $2)\n          AND ($3::timestamptz IS NULL OR created_at >= $3)\n          AND ($4::timestamptz IS NULL OR created_at <= $4)\n          AND ($5::timestamptz IS NULL OR edited_at >= $5)\n          AND ($6::timestamptz IS NULL OR edited_at <= $6)\n          AND ($7::timestamptz IS NULL OR (created_at, id) > ($7, $8))\n        ORDER BY created_at, id\n        LIMIT $9\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "apps_data",
+            "name": "id"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "app_id",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "apps_data",
+            "name": "app_id"
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "type",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "apps_data",
+            "name": "type"
+          }
+        }
+      },
+      {
+        "ordinal": 3,
+        "name": "encrypted_json",
+        "type_info": "Bytea",
+        "origin": {
+          "Table": {
+            "table": "apps_data",
+            "name": "encrypted_json"
+          }
+        }
+      },
+      {
+        "ordinal": 4,
+        "name": "created_at",
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "apps_data",
+            "name": "created_at"
+          }
+        }
+      },
+      {
+        "ordinal": 5,
+        "name": "edited_at",
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "apps_data",
+            "name": "edited_at"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Text",
+        "Timestamptz",
+        "Timestamptz",
+        "Timestamptz",
+        "Timestamptz",
+        "Timestamptz",
+        "Uuid",
+        "Int8"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "5c8ff87e2f08b9a0a956f7ae718a4794ee04876c62422e9cfd15b1ddc1e9cb65"
+}

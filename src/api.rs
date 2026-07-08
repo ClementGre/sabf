@@ -7,8 +7,9 @@ pub mod shares;
 pub mod users;
 
 use axum::http::{HeaderName, Method};
+use axum::response::IntoResponse;
 use axum::routing::{get, post};
-use axum::Router;
+use axum::{Json, Router};
 use tower_http::cors::{AllowOrigin, CorsLayer};
 use tower_http::trace::TraceLayer;
 
@@ -41,6 +42,7 @@ pub fn router(state: AppState) -> Router {
     let cors = cors_layer(&state.config().cors_allowed_origins);
 
     Router::new()
+        .route("/health", get(health))
         .route("/auth/register", post(auth::register))
         .route("/auth/login", post(auth::login))
         .route("/auth/refresh", post(auth::refresh))
@@ -68,4 +70,8 @@ pub fn router(state: AppState) -> Router {
         .layer(TraceLayer::new_for_http())
         .layer(cors)
         .with_state(state)
+}
+
+async fn health() -> impl IntoResponse {
+    Json(serde_json::json!({ "status": "healthy", "service": "sabf" }))
 }

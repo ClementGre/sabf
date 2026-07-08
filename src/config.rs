@@ -43,7 +43,7 @@ impl Config {
             port: env::var("PORT")
                 .ok()
                 .and_then(|p| p.parse().ok())
-                .unwrap_or(8080),
+                .unwrap_or(80),
             jwt_secret,
             access_token_ttl_secs: env::var("ACCESS_TOKEN_TTL_SECS")
                 .ok()

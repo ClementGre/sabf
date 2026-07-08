@@ -1,0 +1,17 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            INSERT INTO apps_access (app_id, user_id, wrapped_dek, role, status)\n            VALUES ($1, $2, $3, $4, 'active')\n            ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Uuid",
+        "Bytea",
+        "Text"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "b88fdd0c1adec19be2822c54134f36838b7a0689fad87d98beb119cd62517104"
+}

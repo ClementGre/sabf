@@ -1,0 +1,18 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        UPDATE users\n        SET auth_hash = $2, auth_salt = $3, kdf_salt = $4, wrapped_umk = $5\n        WHERE id = $1\n        ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Text",
+        "Bytea",
+        "Bytea",
+        "Bytea"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "46ba18085d0f31d7dc2c66dc389262fc472a00127005c5d7bad2d9f6ea0319eb"
+}

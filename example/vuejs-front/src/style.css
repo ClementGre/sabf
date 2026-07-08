@@ -1,0 +1,44 @@
+@import "tailwindcss";
+
+:root {
+  color-scheme: light;
+}
+
+html, body, #app {
+  height: 100%;
+}
+
+body {
+  @apply bg-neutral-50 text-neutral-900;
+}
+
+/* Native-input styling kept minimal on purpose: light border, comfortable
+   touch target, a visible focus ring. No custom widgets. */
+input, textarea, select {
+  @apply w-full rounded-md border border-neutral-300 bg-white px-3 py-2 text-base
+         focus:outline-none focus:ring-2 focus:ring-offset-1;
+}
+
+button {
+  @apply cursor-pointer rounded-md px-3 py-2 text-base font-medium transition-colors;
+}
+
+.btn-primary {
+  @apply bg-neutral-900 text-white hover:bg-neutral-700 disabled:opacity-50 disabled:cursor-not-allowed;
+}
+
+.btn-secondary {
+  @apply bg-neutral-200 text-neutral-900 hover:bg-neutral-300 disabled:opacity-50 disabled:cursor-not-allowed;
+}
+
+.btn-danger {
+  @apply bg-red-600 text-white hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed;
+}
+
+.card {
+  @apply rounded-lg border border-neutral-200 bg-white p-4 shadow-sm;
+}
+
+.field-label {
+  @apply mb-1 block text-sm font-medium text-neutral-600;
+}

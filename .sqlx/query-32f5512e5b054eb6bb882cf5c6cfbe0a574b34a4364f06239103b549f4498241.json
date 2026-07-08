@@ -1,0 +1,144 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        INSERT INTO users\n            (id, username, auth_hash, auth_salt, kdf_salt, kdf_params,\n             wrapped_umk, public_key, wrapped_privkey)\n        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)\n        RETURNING id, username, auth_hash, auth_salt, kdf_salt, kdf_params,\n                  wrapped_umk, public_key, wrapped_privkey, created_at\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "users",
+            "name": "id"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "username",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "users",
+            "name": "username"
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "auth_hash",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "users",
+            "name": "auth_hash"
+          }
+        }
+      },
+      {
+        "ordinal": 3,
+        "name": "auth_salt",
+        "type_info": "Bytea",
+        "origin": {
+          "Table": {
+            "table": "users",
+            "name": "auth_salt"
+          }
+        }
+      },
+      {
+        "ordinal": 4,
+        "name": "kdf_salt",
+        "type_info": "Bytea",
+        "origin": {
+          "Table": {
+            "table": "users",
+            "name": "kdf_salt"
+          }
+        }
+      },
+      {
+        "ordinal": 5,
+        "name": "kdf_params",
+        "type_info": "Jsonb",
+        "origin": {
+          "Table": {
+            "table": "users",
+            "name": "kdf_params"
+          }
+        }
+      },
+      {
+        "ordinal": 6,
+        "name": "wrapped_umk",
+        "type_info": "Bytea",
+        "origin": {
+          "Table": {
+            "table": "users",
+            "name": "wrapped_umk"
+          }
+        }
+      },
+      {
+        "ordinal": 7,
+        "name": "public_key",
+        "type_info": "Bytea",
+        "origin": {
+          "Table": {
+            "table": "users",
+            "name": "public_key"
+          }
+        }
+      },
+      {
+        "ordinal": 8,
+        "name": "wrapped_privkey",
+        "type_info": "Bytea",
+        "origin": {
+          "Table": {
+            "table": "users",
+            "name": "wrapped_privkey"
+          }
+        }
+      },
+      {
+        "ordinal": 9,
+        "name": "created_at",
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "users",
+            "name": "created_at"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Text",
+        "Text",
+        "Bytea",
+        "Bytea",
+        "Jsonb",
+        "Bytea",
+        "Bytea",
+        "Bytea"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "32f5512e5b054eb6bb882cf5c6cfbe0a574b34a4364f06239103b549f4498241"
+}

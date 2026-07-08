@@ -1,0 +1,101 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        SELECT a.id AS app_id, a.slug, a.encrypted_metadata,\n               aa.role, aa.status, aa.wrapped_dek, aa.last_edit_at\n        FROM apps_access aa\n        JOIN apps a ON a.id = aa.app_id\n        WHERE aa.user_id = $1 AND aa.status = 'active'\n          AND ($2::text IS NULL OR a.slug = $2)\n        ORDER BY a.created_at\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "app_id",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "apps",
+            "name": "id"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "slug",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "apps",
+            "name": "slug"
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "encrypted_metadata",
+        "type_info": "Bytea",
+        "origin": {
+          "Table": {
+            "table": "apps",
+            "name": "encrypted_metadata"
+          }
+        }
+      },
+      {
+        "ordinal": 3,
+        "name": "role",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "apps_access",
+            "name": "role"
+          }
+        }
+      },
+      {
+        "ordinal": 4,
+        "name": "status",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "apps_access",
+            "name": "status"
+          }
+        }
+      },
+      {
+        "ordinal": 5,
+        "name": "wrapped_dek",
+        "type_info": "Bytea",
+        "origin": {
+          "Table": {
+            "table": "apps_access",
+            "name": "wrapped_dek"
+          }
+        }
+      },
+      {
+        "ordinal": 6,
+        "name": "last_edit_at",
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "apps_access",
+            "name": "last_edit_at"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Text"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      true
+    ]
+  },
+  "hash": "be2e3784bdee97d160cef8be0e1fcfdac8bcb79a4f32e64631ada3f0ba0757f8"
+}

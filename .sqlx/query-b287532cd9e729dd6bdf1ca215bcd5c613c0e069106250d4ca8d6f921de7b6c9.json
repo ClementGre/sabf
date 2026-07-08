@@ -1,0 +1,14 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        WITH RECURSIVE lineage AS (\n            SELECT id, parent_id FROM sessions WHERE id = $1\n            UNION\n            SELECT s.id, s.parent_id\n            FROM sessions s\n            JOIN lineage l ON s.id = l.parent_id OR s.parent_id = l.id\n        )\n        UPDATE sessions SET revoked_at = now()\n        WHERE id IN (SELECT id FROM lineage) AND revoked_at IS NULL\n        ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "b287532cd9e729dd6bdf1ca215bcd5c613c0e069106250d4ca8d6f921de7b6c9"
+}
