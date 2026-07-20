@@ -107,6 +107,21 @@ pub async fn list(
     .await
 }
 
+/// Locks every current data row of an app (`FOR UPDATE`) and returns their
+/// ids. Used at the start of a rotation transaction (SPEC.md §3.1) so that
+/// concurrent PATCH/DELETE of these rows block until the rotation commits, and
+/// the caller can detect a mismatch between the row set it re-encrypted and the
+/// set that actually exists (a concurrent insert) before overwriting anything.
+pub async fn lock_ids_for_app(tx: &mut sqlx::PgConnection, app_id: Uuid) -> sqlx::Result<Vec<Uuid>> {
+    let rows = sqlx::query!(
+        "SELECT id FROM apps_data WHERE app_id = $1 FOR UPDATE",
+        app_id,
+    )
+    .fetch_all(tx)
+    .await?;
+    Ok(rows.into_iter().map(|r| r.id).collect())
+}
+
 /// Overwrites ciphertext in place during rotation (SPEC.md §3.1).
 /// `edited_at`/`created_at` are intentionally left untouched: re-encryption
 /// under a new DEK is not a content edit.

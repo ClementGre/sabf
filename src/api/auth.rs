@@ -1,11 +1,13 @@
 use axum::Json;
 use axum::extract::ConnectInfo;
 use axum::extract::State;
-use axum::http::StatusCode;
+use axum::http::{HeaderMap, StatusCode};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::net::SocketAddr;
 use uuid::Uuid;
+
+use crate::config::Config;
 
 use crate::api::bytes::B64;
 use crate::api::extractors::AuthUser;
@@ -69,13 +71,30 @@ pub struct LoginResponse {
     pub public_key: B64,
 }
 
+/// Resolves the client IP used for per-IP login rate limiting. Defaults to the
+/// socket peer; when `CLIENT_IP_HEADER` is configured (server behind a trusted
+/// proxy), the first entry of that header is used instead. The header is only
+/// consulted when explicitly configured, since an untrusted client could spoof
+/// it to evade or poison per-IP limiting.
+fn client_ip(config: &Config, headers: &HeaderMap, addr: SocketAddr) -> String {
+    if let Some(name) = &config.client_ip_header
+        && let Some(value) = headers.get(name).and_then(|v| v.to_str().ok())
+        && let Some(first) = value.split(',').next()
+        && !first.trim().is_empty()
+    {
+        return first.trim().to_string();
+    }
+    addr.ip().to_string()
+}
+
 pub async fn login(
     State(state): State<AppState>,
     ConnectInfo(addr): ConnectInfo<SocketAddr>,
+    headers: HeaderMap,
     Json(body): Json<LoginRequest>,
 ) -> AppResult<Json<LoginResponse>> {
     let username_key = format!("user:{}", body.username);
-    let ip_key = format!("ip:{}", addr.ip());
+    let ip_key = format!("ip:{}", client_ip(state.config(), &headers, addr));
     if !state.login_rate_limiter().check(&username_key) || !state.login_rate_limiter().check(&ip_key) {
         return Err(AppError::TooManyRequests);
     }

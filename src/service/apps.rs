@@ -1,3 +1,5 @@
+use std::collections::HashSet;
+
 use sqlx::PgPool;
 use uuid::Uuid;
 
@@ -115,17 +117,43 @@ pub async fn rotate(
         ));
     }
 
+    // Rotation re-seals the DEK to existing members and drops omitted ones; it
+    // is not a path for adding brand-new members (that goes through the
+    // share/accept flow, which requires recipient consent). Reject any access
+    // entry for a user who isn't already on the app.
+    let existing_members: HashSet<Uuid> = apps_access::list_for_app(pool, app_id)
+        .await?
+        .into_iter()
+        .map(|a| a.user_id)
+        .collect();
+    if let Some(stranger) = access.iter().find(|a| !existing_members.contains(&a.user_id)) {
+        return Err(AppError::BadRequest(format!(
+            "user {} is not a member of this app; rotation cannot add new members",
+            stranger.user_id
+        )));
+    }
+
     let mut tx = pool.begin().await?;
+
+    // Lock the current data rows and require the client's re-encrypted set to
+    // match them exactly. If a concurrent write inserted or removed a row after
+    // the client snapshotted the app, the sets differ and we abort so the
+    // client can retry — otherwise that row would be left under the old DEK
+    // (undecryptable) or silently clobbered (SPEC.md §3.1).
+    let existing_ids: HashSet<Uuid> = apps_data::lock_ids_for_app(&mut tx, app_id)
+        .await?
+        .into_iter()
+        .collect();
+    let submitted_ids: HashSet<Uuid> = data.iter().map(|d| d.id).collect();
+    if existing_ids != submitted_ids {
+        return Err(AppError::Conflict(
+            "app data changed during rotation; re-read and retry".into(),
+        ));
+    }
+
     apps::update_metadata(&mut tx, app_id, new_encrypted_metadata).await?;
     for item in &data {
-        let rows = apps_data::replace_ciphertext_for_rotate(&mut tx, app_id, item.id, &item.new_encrypted_json)
-            .await?;
-        if rows == 0 {
-            return Err(AppError::BadRequest(format!(
-                "data row {} does not belong to this app",
-                item.id
-            )));
-        }
+        apps_data::replace_ciphertext_for_rotate(&mut tx, app_id, item.id, &item.new_encrypted_json).await?;
     }
     let access_pairs: Vec<(Uuid, Vec<u8>)> = access
         .into_iter()

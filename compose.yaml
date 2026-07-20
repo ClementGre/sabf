@@ -22,8 +22,9 @@ services:
       - "8080:80"
     environment:
       DATABASE_URL: postgres://sabf:sabf@postgres:5432/sabf?sslmode=disable
-      JWT_SECRET: change-me-to-a-long-random-string
+      JWT_SECRET: ${JWT_SECRET:-}
       CORS_ALLOWED_ORIGINS: '*'
+      CLIENT_IP_HEADER: ''
     restart: always
     depends_on:
       - postgres
