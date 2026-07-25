@@ -117,11 +117,20 @@ export function leaveApp(appId) {
 
 // --- app data (time series / freeform records) -------------------------
 
-export async function createDataEntry(appId, dek, type, json) {
+// `createdAt` is client-controlled (SPEC.md §5): pass an RFC 3339 string to
+// backdate/set the entry's creation time; defaults to now. It's a plaintext
+// queryable column, not part of the ciphertext AAD, so it stays editable.
+export async function createDataEntry(appId, dek, type, json, { createdAt } = {}) {
   const dataId = crypto.randomUuidV7()
+  const createdAtIso = createdAt ?? new Date().toISOString()
   const encryptedJson = crypto.encryptJson(dek, json, crypto.AAD.appData(appId, dataId, type))
-  await dataApi.create(appId, { dataId, type, encryptedJsonB64: crypto.b64encode(encryptedJson) })
-  return { id: dataId, type, json, createdAt: new Date().toISOString(), editedAt: new Date().toISOString() }
+  const row = await dataApi.create(appId, {
+    dataId,
+    type,
+    encryptedJsonB64: crypto.b64encode(encryptedJson),
+    createdAt: createdAtIso,
+  })
+  return { id: dataId, type, json, createdAt: row.created_at, editedAt: row.edited_at }
 }
 
 export async function listDataEntries(appId, dek, opts = {}) {
@@ -138,9 +147,12 @@ export async function listDataEntries(appId, dek, opts = {}) {
   }
 }
 
-export async function updateDataEntry(appId, dek, entry, newJson) {
+// Pass `createdAt` (RFC 3339) to also move the entry's creation time; omit it
+// to leave the stored value untouched (only the json / edited_at change).
+export async function updateDataEntry(appId, dek, entry, newJson, { createdAt } = {}) {
   const encryptedJson = crypto.encryptJson(dek, newJson, crypto.AAD.appData(appId, entry.id, entry.type))
-  await dataApi.patch(appId, entry.id, { encryptedJsonB64: crypto.b64encode(encryptedJson) })
+  const row = await dataApi.patch(appId, entry.id, { encryptedJsonB64: crypto.b64encode(encryptedJson), createdAt })
+  return { id: entry.id, type: entry.type, json: newJson, createdAt: row.created_at, editedAt: row.edited_at }
 }
 
 export function deleteDataEntry(appId, dataId) {

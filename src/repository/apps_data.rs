@@ -10,18 +10,22 @@ pub async fn create(
     app_id: Uuid,
     r#type: &str,
     encrypted_json: &[u8],
+    created_at: DateTime<Utc>,
 ) -> sqlx::Result<AppData> {
+    // `created_at` is client-supplied (SPEC.md §5); `edited_at` starts equal to
+    // it (never edited yet) and is server-managed from then on.
     sqlx::query_as!(
         AppData,
         r#"
-        INSERT INTO apps_data (id, app_id, type, encrypted_json)
-        VALUES ($1, $2, $3, $4)
+        INSERT INTO apps_data (id, app_id, type, encrypted_json, created_at, edited_at)
+        VALUES ($1, $2, $3, $4, $5, $5)
         RETURNING id, app_id, type, encrypted_json, created_at, edited_at
         "#,
         id,
         app_id,
         r#type,
         encrypted_json,
+        created_at,
     )
     .fetch_one(executor)
     .await
@@ -32,17 +36,22 @@ pub async fn update(
     app_id: Uuid,
     data_id: Uuid,
     encrypted_json: &[u8],
+    created_at: Option<DateTime<Utc>>,
 ) -> sqlx::Result<Option<AppData>> {
+    // `created_at` is client-controlled: overwrite it when supplied, keep it
+    // otherwise. `edited_at` is always bumped to server time.
     sqlx::query_as!(
         AppData,
         r#"
-        UPDATE apps_data SET encrypted_json = $3, edited_at = now()
+        UPDATE apps_data
+        SET encrypted_json = $3, created_at = COALESCE($4, created_at), edited_at = now()
         WHERE app_id = $1 AND id = $2
         RETURNING id, app_id, type, encrypted_json, created_at, edited_at
         "#,
         app_id,
         data_id,
         encrypted_json,
+        created_at,
     )
     .fetch_optional(executor)
     .await

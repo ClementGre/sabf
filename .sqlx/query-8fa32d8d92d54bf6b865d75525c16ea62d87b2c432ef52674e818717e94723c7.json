@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "\n        UPDATE apps_data SET encrypted_json = $3, edited_at = now()\n        WHERE app_id = $1 AND id = $2\n        RETURNING id, app_id, type, encrypted_json, created_at, edited_at\n        ",
+  "query": "\n        INSERT INTO apps_data (id, app_id, type, encrypted_json, created_at, edited_at)\n        VALUES ($1, $2, $3, $4, $5, $5)\n        RETURNING id, app_id, type, encrypted_json, created_at, edited_at\n        ",
   "describe": {
     "columns": [
       {
@@ -74,7 +74,9 @@
       "Left": [
         "Uuid",
         "Uuid",
-        "Bytea"
+        "Text",
+        "Bytea",
+        "Timestamptz"
       ]
     },
     "nullable": [
@@ -86,5 +88,5 @@
       false
     ]
   },
-  "hash": "76a79a82eafe9c15992d81494fb0c5dd50dbfce23d733a5119598e0e8424a8af"
+  "hash": "8fa32d8d92d54bf6b865d75525c16ea62d87b2c432ef52674e818717e94723c7"
 }

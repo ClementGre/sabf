@@ -1,0 +1,30 @@
+services:
+  sabf:
+    image: ghcr.io/clementgre/sabf/sabf-back:${TAG:-latest}
+    container_name: sabf
+    restart: unless-stopped
+    labels:
+      traefik.enable: true
+      traefik.http.routers.sabf.rule: Host(`${API_DOMAIN}`)
+      traefik.http.services.sabf.loadbalancer.server.port: 80
+    environment:
+      RUST_LOG: ${RUST_LOG:-info}
+      DATABASE_URL: postgres://sabf:${DB_PASSWORD}@postgres:5432/sabf
+      JWT_SECRET: ${JWT_SECRET}
+      CORS_ALLOWED_ORIGINS: "https://${FRONT_DOMAIN}"
+      CLIENT_IP_HEADER: X-Forwarded-For
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - sabf
+      - traefik
+      - postgres
+
+networks:
+  sabf:
+    name: sabf
+  traefik:
+    external: true
+  postgres:
+    external: true

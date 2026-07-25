@@ -60,6 +60,12 @@ required, but human-inspectable for debugging. `GET /apps/:id/data` returns
 `next_cursor` (null once the page is short of `limit`) so clients don't have
 to compute it themselves.
 
+Because `created_at` is client-controlled and editable (SPEC.md §5), it is not
+guaranteed monotonic with `id`. That doesn't affect the cursor: `(created_at,
+id)` is still a total order, so the keyset walk stays correct — a client that
+backdates or moves an entry's `created_at` just changes where that row sorts,
+exactly as intended.
+
 ## CORS
 
 `api::router` attaches a `tower_http::cors::CorsLayer` built from

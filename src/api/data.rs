@@ -43,6 +43,9 @@ pub struct CreateDataRequest {
     pub data_id: Uuid,
     pub r#type: String,
     pub encrypted_json: B64,
+    // Client-controlled creation timestamp (SPEC.md §5). The server stores it
+    // verbatim rather than defaulting to `now()`.
+    pub created_at: DateTime<Utc>,
 }
 
 pub async fn create(
@@ -58,6 +61,7 @@ pub async fn create(
         body.data_id,
         &body.r#type,
         &body.encrypted_json.0,
+        body.created_at,
     )
     .await?;
     Ok((StatusCode::CREATED, Json(row.into())))
@@ -141,6 +145,10 @@ pub async fn list(
 #[derive(Deserialize)]
 pub struct PatchDataRequest {
     pub encrypted_json: B64,
+    // Optional client-controlled creation timestamp (SPEC.md §5). When present
+    // it overwrites `created_at`; when omitted the stored value is kept.
+    #[serde(default)]
+    pub created_at: Option<DateTime<Utc>>,
 }
 
 pub async fn patch(
@@ -149,7 +157,15 @@ pub async fn patch(
     Path((app_id, data_id)): Path<(Uuid, Uuid)>,
     Json(body): Json<PatchDataRequest>,
 ) -> AppResult<Json<DataResponse>> {
-    let row = data_service::patch(state.pool(), app_id, auth.user_id, data_id, &body.encrypted_json.0).await?;
+    let row = data_service::patch(
+        state.pool(),
+        app_id,
+        auth.user_id,
+        data_id,
+        &body.encrypted_json.0,
+        body.created_at,
+    )
+    .await?;
     Ok(Json(row.into()))
 }
 

@@ -115,6 +115,14 @@ const entry = await apps.createDataEntry(props.appId, props.dek, 'reading', {
 })
 // entry === { id, type, json, createdAt, editedAt }
 
+// createdAt is client-controlled — pass an RFC 3339 string to backdate/set it
+// (defaults to now). It's a plaintext, queryable column, not part of the AAD.
+const backdated = await apps.createDataEntry(
+  props.appId, props.dek, 'reading',
+  { value: 42 },
+  { createdAt: '2026-01-01T09:00:00Z' },
+)
+
 // List — filter/paginate on the plaintext columns only (type + timestamps).
 // Never on encrypted contents. Returns decrypted entries.
 const { entries, nextCursor } = await apps.listDataEntries(props.appId, props.dek, {
@@ -130,16 +138,25 @@ const { entries, nextCursor } = await apps.listDataEntries(props.appId, props.de
 // `type` is immutable; only the json changes. Bumps editedAt.
 await apps.updateDataEntry(props.appId, props.dek, entry, { ...entry.json, value: 43 })
 
+// createdAt is also editable — pass it to move the entry's timestamp (omit to
+// leave it). Re-use the same json when you only want to change the time.
+await apps.updateDataEntry(props.appId, props.dek, entry, entry.json, {
+  createdAt: '2026-01-02T08:00:00Z',
+})
+
 // Delete
 await apps.deleteDataEntry(props.appId, entry.id)
 ```
 
 `type` is chosen by you and is part of the ciphertext's AAD, so it cannot be
-changed after creation — pick it deliberately. `id` is a client-generated
-UUIDv7 (time-ordered), so lexicographic id order is also creation order if
-you need a stable sort. Filtering can only touch the plaintext columns
-(`type`, `created_*`, `edited_*`); anything inside `json` is opaque to the
-server, so query-by-content must happen after decrypt, client-side.
+changed after creation — pick it deliberately. `createdAt`, by contrast, is a
+plaintext column outside the AAD, so it stays editable (see above). `id` is a
+client-generated UUIDv7 (time-ordered) and immutable, so lexicographic id order
+is always *insertion* order — use it, not `createdAt`, when you need a stable
+sort, since `createdAt` can be backdated and no longer tracks when the row was
+uploaded. Filtering can only touch the plaintext columns (`type`, `created_*`,
+`edited_*`); anything inside `json` is opaque to the server, so query-by-content
+must happen after decrypt, client-side.
 
 See `src/apps/demo/DemoApp.vue` for a complete, minimal example using all of
 the above.

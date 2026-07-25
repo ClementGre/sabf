@@ -1,9 +1,9 @@
 // SPEC.md §5 "App data".
 import { http } from '../http.js'
 
-export function create(appId, { dataId, type, encryptedJsonB64 }) {
+export function create(appId, { dataId, type, encryptedJsonB64, createdAt }) {
   return http
-    .post(`/apps/${appId}/data`, { data_id: dataId, type, encrypted_json: encryptedJsonB64 })
+    .post(`/apps/${appId}/data`, { data_id: dataId, type, encrypted_json: encryptedJsonB64, created_at: createdAt })
     .then((r) => r.data)
 }
 
@@ -23,8 +23,11 @@ export function list(appId, { type, createdFrom, createdTo, editedFrom, editedTo
     .then((r) => r.data)
 }
 
-export function patch(appId, dataId, { encryptedJsonB64 }) {
-  return http.patch(`/apps/${appId}/data/${dataId}`, { encrypted_json: encryptedJsonB64 }).then((r) => r.data)
+export function patch(appId, dataId, { encryptedJsonB64, createdAt }) {
+  // `created_at` is optional — omitted (undefined) leaves the stored value.
+  return http
+    .patch(`/apps/${appId}/data/${dataId}`, { encrypted_json: encryptedJsonB64, created_at: createdAt })
+    .then((r) => r.data)
 }
 
 export function remove(appId, dataId) {

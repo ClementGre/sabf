@@ -324,13 +324,15 @@ Apps
                                       --   owner should rotate if true revocation is needed.
 
 App data
-  POST   /apps/:id/data              { data_id, type, encrypted_json } -> row
+  POST   /apps/:id/data              { data_id, type, encrypted_json, created_at } -> row
                                       -- active members only; bumps caller's last_edit_at.
+                                      --   created_at is client-supplied, not server now() (below).
   GET    /apps/:id/data?type=&created_from=&created_to=&edited_from=&edited_to=&limit=&cursor=
                                       -- active members only. Filters on any non-encrypted
                                       --   field; keyset pagination (below).
-  PATCH  /apps/:id/data/:data_id     { encrypted_json }   -- active members; bumps edited_at
-                                      --   and caller's last_edit_at. type is immutable.
+  PATCH  /apps/:id/data/:data_id     { encrypted_json, created_at? }   -- active members; bumps
+                                      --   edited_at and caller's last_edit_at. type is immutable;
+                                      --   created_at is overwritten when present, kept when omitted.
   DELETE /apps/:id/data/:data_id     -- active members.
 
 Sharing  (owner-only issuance in v0.2)
@@ -358,6 +360,19 @@ e.g. 500; results ordered by `(created_at, id)`. Filters (`type`, `created_from/
 **`last_edit_at`** is stored per membership row and updated on that member's writes
 (POST/PATCH/DELETE of data, PATCH metadata) — never on reads, so reading never
 incurs a write.
+
+**`apps_data.created_at` is client-controlled**, not a server timestamp. Like the
+encrypted content, the client owns it: it supplies `created_at` on `POST` (the
+logical time the entry represents, which may be backdated) and MAY change it on
+`PATCH`; the server stores the value verbatim. It stays a *plaintext, queryable*
+column — filterable via `created_from`/`created_to` and used as the keyset
+pagination key — and it is **not** part of any ciphertext AAD (§2.1), so moving it
+requires no re-encryption. `edited_at` remains server-managed: it is set equal to
+`created_at` at creation and bumped to server time on every `PATCH`. Rotation (§3.1)
+preserves both. Because `created_at` no longer tracks row-insertion time, it is no
+longer guaranteed monotonic with the (time-ordered UUIDv7) `id`; the
+`ORDER BY (created_at, id)` keyset stays a well-defined total order regardless, and
+`id` still reflects true insertion order if a stable insertion sort is needed.
 
 ## 6. Sessions & tokens
 

@@ -23,11 +23,12 @@ pub async fn create(
     data_id: Uuid,
     r#type: &str,
     encrypted_json: &[u8],
+    created_at: DateTime<Utc>,
 ) -> AppResult<AppData> {
     require_active_member(pool, app_id, user_id).await?;
 
     let mut tx = pool.begin().await?;
-    let row = apps_data::create(&mut *tx, data_id, app_id, r#type, encrypted_json).await?;
+    let row = apps_data::create(&mut *tx, data_id, app_id, r#type, encrypted_json, created_at).await?;
     apps_access::bump_last_edit(&mut tx, app_id, user_id).await?;
     tx.commit().await?;
     Ok(row)
@@ -64,11 +65,12 @@ pub async fn patch(
     user_id: Uuid,
     data_id: Uuid,
     encrypted_json: &[u8],
+    created_at: Option<DateTime<Utc>>,
 ) -> AppResult<AppData> {
     require_active_member(pool, app_id, user_id).await?;
 
     let mut tx = pool.begin().await?;
-    let row = apps_data::update(&mut *tx, app_id, data_id, encrypted_json)
+    let row = apps_data::update(&mut *tx, app_id, data_id, encrypted_json, created_at)
         .await?
         .ok_or(AppError::NotFound)?;
     apps_access::bump_last_edit(&mut tx, app_id, user_id).await?;
